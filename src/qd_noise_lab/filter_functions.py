@@ -23,5 +23,5 @@ def gaussian_phase_coherence(f_hz, psd_hz2_per_hz, filter_sq):
     s=np.asarray(psd_hz2_per_hz,float)
     ff=np.asarray(filter_sq,float)
     if f.shape!=s.shape or f.shape!=ff.shape: raise ValueError("shape mismatch")
-    chi=2*np.pi**2*np.trapz(s*ff,f)
+    chi=2*np.pi**2*np.trapezoid(s*ff,f)
     return float(np.exp(-chi)),float(chi)
