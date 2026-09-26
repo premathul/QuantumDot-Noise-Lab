@@ -1,213 +1,93 @@
 # QuantumDot-Noise-Lab
 
-QuantumDot-Noise-Lab is a modular Python project for studying **noise, decoherence, and coherence envelopes in semiconductor quantum dots and spin qubits**.
+QuantumDot-Noise-Lab is a research-oriented Python framework for studying noise and decoherence in semiconductor quantum dots and spin qubits. The project is designed around a physically important separation: the environmental noise spectrum, the pulse sequence applied to the qubit, and the measured coherence envelope should be treated as distinct parts of the problem. Keeping these elements separate makes it possible to compare different noise mechanisms, investigate different experimental control sequences, and understand exactly which assumptions produce a reported coherence time.
 
-The repository is built around a simple idea:
+In semiconductor qubits, decoherence rarely originates from one perfectly defined process. Charge fluctuations, magnetic noise, random telegraph fluctuators, (1/f) noise, control-amplitude errors, and slow calibration drift can all contribute over different frequency ranges. A Ramsey experiment and a Hahn-echo experiment can therefore report very different coherence times even for the same physical device. This does not imply that the device itself has changed; it reflects the fact that each pulse sequence filters environmental noise differently. The purpose of this repository is to make that filtering explicit.
 
-> Separate the physical noise spectrum from the pulse sequence and from the final coherence observable.
+The current code supports Gaussian quasistatic dephasing, exponential and stretched-exponential phenomenological envelopes, white noise, (1/f^alpha) spectra, random-telegraph spectra, Ramsey and Hahn-echo filter functions, numerical Gaussian phase-noise integration, independent-envelope combination, and synthesis of Gaussian time-domain noise traces from a target power spectral density.
 
-That separation makes it easier to compare noise mechanisms, test assumptions, and extend the model without rewriting the entire calculation.
-
----
-
-## 1. Scientific motivation
-
-Spin-qubit coherence is affected by multiple noise mechanisms, including:
-
-- quasistatic charge noise,
-- (1/f^alpha) noise,
-- white noise,
-- random telegraph noise,
-- nuclear-spin fluctuations,
-- magnetic-field noise,
-- control-amplitude noise,
-- pulse errors,
-- correlated gate noise.
-
-Different experiments probe different frequency bands of that noise.
-
-Ramsey, Hahn echo, Rabi, CPMG, and more general dynamical-decoupling sequences do not respond identically to the same spectrum.
-
-A useful computational framework should therefore distinguish:
+For Gaussian quasistatic frequency noise with standard deviation (sigma_f), the Ramsey envelope used in this project is
 
 [
-S(f)
+W_R(t)=
+expleft[-2pi^2sigma_f^2t^2ight].
 ]
 
-from
+The associated (1/e) dephasing time is
 
 [
-F(f,t)
-]
-
-and from
-
-[
-W(t).
-]
-
----
-
-## 2. Current capabilities
-
-The current implementation contains:
-
-- Gaussian quasistatic Ramsey decay,
-- exponential decay,
-- stretched-exponential decay,
-- white-noise PSD,
-- (1/f^alpha) PSD,
-- random-telegraph PSD,
-- Ramsey filter function,
-- Hahn-echo filter function,
-- Gaussian phase-noise coherence integration,
-- independent-envelope multiplication,
-- synthetic Gaussian noise-trace generation from a target PSD.
-
----
-
-## 3. Core conventions
-
-### 3.1 Gaussian quasistatic frequency noise
-
-For frequency fluctuations with standard deviation (sigma_f),
-
-[
-W_R(t)
-=
-expleft(
--2pi^2sigma_f^2t^2
-ight).
-]
-
-The corresponding (1/e) time is
-
-[
-T_2^*
-=
+T_2^*=
 rac{1}{sqrt{2}pisigma_f}.
 ]
 
-This convention is made explicit because factors of (2), (2pi), and one-sided versus two-sided PSD definitions commonly cause discrepancies between codes.
+This convention is written explicitly because many disagreements in the literature and in simulation code arise from hidden factors of (2pi), different angular-frequency versus ordinary-frequency conventions, or different definitions of spectral density.
 
-### 3.2 Exponential envelope
+A simple exponential decay is written as
 
 [
-W(t)=e^{-t/T}.
+W(t)=e^{-t/T},
 ]
 
-### 3.3 Stretched exponential
+while a stretched exponential is
 
 [
-W(t)
-=
+W(t)=
 expleft[-(t/T)^etaight].
 ]
 
-This is a phenomenological model that can represent a broad range of observed decays.
+These phenomenological models are useful for fitting data, but they should not automatically be interpreted as proof of a unique microscopic noise mechanism. The value of (eta) can summarize the shape of an envelope, yet different underlying stochastic processes can produce similar fitted behavior over a limited time window.
 
----
-
-## 4. Noise spectra
-
-### White noise
+The repository includes several frequency-domain noise models. White noise is represented by a constant power spectral density,
 
 [
-S(f)=S_0.
+S(f)=S_0,
 ]
 
-### Power-law noise
+while a power-law spectrum is represented as
 
 [
-S(f)
-=
+S(f)=
 A
 left(
 rac{f_{mathrm{ref}}}{f}
 ight)^alpha.
 ]
 
-The special case (alpha=1) is conventional (1/f) noise.
+The common (1/f) case corresponds to (alpha=1). Random telegraph noise is represented by a Lorentzian form associated with a two-state fluctuator with characteristic switching rate (gamma). These models are not intended to imply that all experimental noise can be reduced to one analytic expression. Instead, they provide controlled components that can be combined, compared, and benchmarked.
 
-### Random telegraph noise
-
-The repository includes a Lorentzian PSD model associated with two-state switching.
-
-Qualitatively,
-
-[
-S_{m RTN}(f)
-propto
-rac{gamma}
-{(2pi f)^2+(2gamma)^2}.
-]
-
-Here (gamma) is the switching rate.
-
----
-
-## 5. Filter-function framework
-
-For Gaussian frequency noise, coherence can be written schematically as
+The central filter-function picture is expressed schematically through
 
 [
 W(t)=e^{-chi(t)},
 ]
 
-where
+with
 
 [
 chi(t)
 propto
 int_0^infty
 S(f)
-|F(f,t)|^2
-,df.
+|F(f,t)|^2,df.
 ]
 
-The exact prefactor depends on the PSD and filter-function conventions.
+Here (S(f)) is the relevant noise power spectral density and (F(f,t)) describes the frequency response of the chosen pulse sequence. The precise normalization depends on the convention used for (S(f)) and for the Fourier transform. This repository therefore exposes the implementation instead of burying the convention inside a fitted time constant.
 
-This repository keeps those definitions in code rather than silently absorbing them into fitted time constants.
+Ramsey evolution is strongly sensitive to low-frequency noise because there is no refocusing pulse. A Hahn-echo sequence suppresses slowly varying fluctuations by reversing the accumulated phase in the second half of the sequence. The repository currently implements both filter functions so that the same noise spectrum can be passed through two different experimental protocols. This makes it possible to see directly why echo can significantly extend coherence when the dominant noise is concentrated at low frequency.
 
-### Ramsey
+A particularly important issue for (1/f) noise is bandwidth. An idealized (1/f) spectrum cannot extend unchanged from exactly zero frequency to infinite frequency. Every realistic calculation must therefore specify lower and upper cutoffs,
 
-The Ramsey filter emphasizes low-frequency noise strongly.
+[
+f_{min}le fle f_{max}.
+]
 
-### Hahn echo
+The lower cutoff can be related to the total observation time, recalibration interval, or experimental acquisition protocol. The upper cutoff may be set by device physics, instrumentation bandwidth, or the frequency scale at which the assumed noise mechanism changes. Because the calculated coherence can depend strongly on these cutoffs, a quoted (T_2^*) is incomplete unless the assumed bandwidth is documented.
 
-A refocusing pulse suppresses low-frequency contributions relative to Ramsey.
+The code also supports time-domain synthesis of Gaussian noise traces from a target power spectral density. This functionality is useful when one wants to compare analytical filter-function predictions against Monte Carlo pulse simulations, generate controlled synthetic data, or examine how finite sampling and finite measurement duration affect estimated coherence. The present synthesis routine is intentionally simple and should be checked for convergence with respect to record length, number of samples, frequency interpolation, and random seed.
 
-The project currently implements both filter functions.
+The repository is organized as a compact package. The `core.py` module contains the fundamental coherence envelopes. The `spectra.py` module defines analytic power spectral densities. The `filter_functions.py` module contains Ramsey and echo filter functions together with numerical coherence integration. The `synthesis.py` module provides time-domain noise generation. The `examples` directory contains runnable demonstrations, and the automated test suite checks basic physical and numerical properties such as correct low-frequency behavior, PSD scaling, and unity coherence in the zero-noise limit.
 
----
-
-## 6. Repository structure
-
-```text
-QuantumDot-Noise-Lab/
-├── README.md
-├── pyproject.toml
-├── examples/
-│   ├── example.py
-│   └── psd_demo.py
-├── src/
-│   └── qd_noise_lab/
-│       ├── __init__.py
-│       ├── core.py
-│       ├── spectra.py
-│       ├── filter_functions.py
-│       └── synthesis.py
-├── tests/
-│   ├── test_core.py
-│   └── test_spectra.py
-└── .github/
-    └── workflows/
-        └── tests.yml
-```
-
----
-
-## 7. Installation
+Installation can be performed with
 
 ```bash
 git clone https://github.com/premathul/QuantumDot-Noise-Lab.git
@@ -215,23 +95,18 @@ cd QuantumDot-Noise-Lab
 python -m pip install -e .
 ```
 
-For tests:
+Development dependencies and tests can be installed with
 
 ```bash
 python -m pip install -e .[dev]
 pytest -q
 ```
 
----
-
-## 8. Example: compare phenomenological envelopes
+A simple calculation comparing two phenomenological envelopes can be written as
 
 ```python
 import numpy as np
-from qd_noise_lab.core import (
-    ramsey_quasistatic,
-    exponential_envelope,
-)
+from qd_noise_lab.core import ramsey_quasistatic, exponential_envelope
 
 t = np.linspace(0, 20e-6, 100)
 
@@ -239,9 +114,7 @@ W_qs = ramsey_quasistatic(t, sigma_f_hz=2e4)
 W_exp = exponential_envelope(t, T_s=15e-6)
 ```
 
----
-
-## 9. Example: integrate a (1/f) spectrum
+A frequency-domain calculation using a (1/f) spectrum can be written as
 
 ```python
 import numpy as np
@@ -270,225 +143,42 @@ We, chi_e = gaussian_phase_coherence(
 )
 ```
 
-The frequency integration limits are physically important. For (1/f) noise, the result depends on low- and high-frequency cutoffs.
+The exact numbers produced by a calculation like this depend on the adopted PSD normalization and integration limits. The repository is intended to make those assumptions inspectable.
 
----
-
-## 10. Why cutoffs matter
-
-An idealized (1/f) spectrum cannot extend unchanged from zero to infinite frequency.
-
-Practical calculations require finite bandwidth,
+The current independent-noise helper multiplies separate coherence envelopes,
 
 [
-f_{min}
-le f le
-f_{max}.
+W_{mathrm{total}}(t)=prod_iW_i(t),
 ]
 
-The inferred coherence therefore depends on:
+which is appropriate only when the underlying assumptions justify independent factorization. Correlated environmental channels require a more general treatment. Future versions will introduce cross-spectral-density matrices (S_{ij}(f)), allowing multiple gate voltages or multiple control channels to be treated together.
 
-- experiment duration,
-- calibration interval,
-- sampling bandwidth,
-- pulse sequence,
-- detector bandwidth,
-- microscopic noise rolloff.
-
-A numerical (T_2^*) is incomplete unless these assumptions are stated.
-
----
-
-## 11. Synthetic noise generation
-
-The `synthesis.py` module can construct a Gaussian time-domain noise trace from a target frequency-domain PSD.
-
-This is useful for:
-
-- validating analytical coherence predictions,
-- simulating pulse sequences,
-- generating synthetic training or test data,
-- studying nonstationary analysis pipelines.
-
-The current implementation is intentionally simple and should be convergence-tested against sample count and duration.
-
----
-
-## 12. Independent versus correlated noise
-
-If independent noise mechanisms produce coherence envelopes (W_i(t)), then
-
-[
-W_{mathrm{total}}(t)
-=
-prod_i W_i(t)
-]
-
-under the appropriate independence assumptions.
-
-Correlated noise does not generally reduce to a simple product.
-
-Future versions will include covariance-aware multichannel noise generation.
-
----
-
-## 13. Numerical validation
-
-Automated tests currently check:
-
-- Ramsey coherence starts at unity,
-- independent envelopes multiply correctly,
-- (1/f) scaling,
-- positivity of random-telegraph PSD,
-- zero-frequency suppression of the echo filter,
-- zero-noise coherence remains exactly one.
-
----
-
-## 14. Numerical integration
-
-The current code uses numerical quadrature over explicitly supplied frequency grids.
-
-Users should perform convergence checks with respect to:
-
-- number of frequency samples,
-- logarithmic versus linear sampling,
-- lower frequency cutoff,
-- upper frequency cutoff.
-
-A smooth plot is not evidence of convergence.
-
----
-
-## 15. Current limitations
-
-The package does not yet include:
-
-- CPMG filter functions,
-- arbitrary pulse sequences,
-- non-Gaussian RTN coherence,
-- exact stochastic-Liouville solutions,
-- Bloch-Redfield dynamics,
-- Lindblad master equations,
-- driven Rabi filter functions,
-- multi-axis noise,
-- correlated gate-noise PSD matrices,
-- Bayesian PSD inference.
-
----
-
-## 16. Planned development
-
-### Near-term
-
-- CPMG-(N) filters,
-- Rabi decay,
-- noise-bandwidth utilities,
-- automatic (T_2) extraction,
-- plotting functions,
-- PSD normalization checks.
-
-### Intermediate
-
-- multichannel cross-spectral-density matrices,
-- Monte Carlo Ramsey experiments,
-- explicit random telegraph trajectories,
-- finite pulse-width effects,
-- pulse-sequence parser,
-- dynamical-decoupling comparison.
-
-### Long-term
-
-A general workflow:
-
-[
-	ext{measured or modeled noise}
-ightarrow
-S_{ij}(f)
-ightarrow
-	ext{pulse sequence}
-ightarrow
-F_{ij}(f,t)
-ightarrow
-chi(t)
-ightarrow
-W(t)
-ightarrow
-T_2.
-]
-
----
-
-## 17. Connection to Ge hole-spin qubits
-
-Although the code is intentionally general, one target application is charge-noise-induced decoherence in Ge/SiGe hole-spin qubits.
-
-If a qubit has gate-frequency susceptibility
+One of the primary applications of this repository is charge-noise dephasing in Ge/SiGe hole-spin qubits. If a device model provides a gate susceptibility
 
 [
 rac{partial f_Z}{partial V},
 ]
 
-and voltage-noise PSD (S_V(f)), then frequency-noise PSD is approximately
+and the voltage-noise spectrum is (S_V(f)), then the first-order frequency-noise spectrum is approximately
 
 [
-S_f(f)
-=
+S_f(f)=
 left(
 rac{partial f_Z}{partial V}
 ight)^2
-S_V(f)
+S_V(f).
 ]
 
-for a single linear noise channel.
+For multiple gates, this becomes a matrix problem involving cross-correlations between channels. This connection is the bridge between device electrostatics and measurable spin coherence.
 
-This provides a direct bridge between device electrostatics and coherence.
+The planned development of QuantumDot-Noise-Lab includes CPMG filters, driven Rabi decay, arbitrary pulse-sequence filter functions, exact random-telegraph trajectories, multi-axis noise, finite pulse-width effects, and cross-spectral-density matrices. A more advanced long-term goal is to support direct inference of a noise model from experimental coherence data, while preserving a clear distinction between measured observables and model-dependent interpretation.
 
----
+A reproducible coherence calculation should document the PSD convention, frequency units, low- and high-frequency cutoffs, sampling grid, pulse sequence, sensitivity conversion, numerical integration method, and exact software version. If stochastic synthesis is used, the random seed and sampling duration should also be reported. These details can materially change the numerical result and therefore belong to the scientific record rather than to implementation trivia.
 
-## 18. Reproducibility checklist
+The current project is suitable for theoretical studies, teaching, benchmarking, experimental post-processing, and development of noise-analysis methods. It should not be treated as a complete open-system solver. Bloch-Redfield theory, Lindblad dynamics, non-Gaussian stochastic processes, and microscopic phonon calculations are outside the present scope, although some may be added later.
 
-A coherence calculation should report:
+## Contact
 
-- PSD definition,
-- one-sided or two-sided convention,
-- frequency units,
-- low-frequency cutoff,
-- high-frequency cutoff,
-- frequency sampling,
-- pulse sequence,
-- filter-function definition,
-- sensitivity conversion,
-- numerical integration method,
-- code commit.
+**Athul Prem**
 
----
-
-## 19. Contributing
-
-Contributions are welcome in:
-
-- new PSD models,
-- analytical benchmarks,
-- filter functions,
-- numerical validation,
-- experimental data interfaces,
-- plotting,
-- documentation,
-- stochastic simulation.
-
-Please include a physical definition and test for every new model.
-
----
-
-## 20. License
-
-MIT License.
-
----
-
-## 21. Project status
-
-**Status:** active development.
-
-The repository already provides a useful foundation for comparing noise spectra and coherence models. The long-term objective is a general, convention-explicit coherence engine for semiconductor spin-qubit experiments.
+For questions, collaboration, scientific discussion, or suggestions related to this repository, please contact Athul Prem through the GitHub account associated with the project.
